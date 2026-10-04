@@ -20,6 +20,15 @@ If port 8000 is occupied, set `ORDER_TRACKER_PORT`, for example:
 ORDER_TRACKER_PORT=18080 docker compose up --build -d --wait
 ```
 
+The order lookup endpoint emits OpenTelemetry server spans, completion logs,
+and an `order_lookup_requests` counter labeled with `http.route` and
+`http.response.status_code`. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OTLP/HTTP
+collector endpoint to export all three signals. In Docker Compose, the endpoint
+must be reachable from inside the app container; use the collector's Compose
+service name or a host address rather than `localhost` unless the collector
+shares the app container's network namespace. Signal-specific OTLP endpoint
+variables are also supported.
+
 Run tests with `uv run --frozen pytest -q`. Stop the app with `docker compose down`. Add `-v` only if you also want to delete the order data.
 
 ## API

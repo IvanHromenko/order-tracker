@@ -33,3 +33,26 @@ def test_create_and_update_order(client):
 
 def test_missing_order(client):
     assert client.get("/api/orders/missing").status_code == 404
+
+
+def test_order_lookup_metric_uses_route_and_status(client, monkeypatch, caplog):
+    recorded = []
+    caplog.set_level("INFO", logger="order_tracker.lookups")
+    monkeypatch.setattr(
+        main.lookup_counter,
+        "add",
+        lambda amount, attributes: recorded.append((amount, attributes)),
+    )
+
+    assert client.get("/api/orders/standard-1001").status_code == 200
+    assert client.get("/api/orders/missing").status_code == 404
+    expected_attributes = [
+        {"http.route": "/api/orders/{order_id}", "http.response.status_code": 200},
+        {"http.route": "/api/orders/{order_id}", "http.response.status_code": 404},
+    ]
+    assert recorded == [(1, attributes) for attributes in expected_attributes]
+    assert [record.__dict__["http.route"] for record in caplog.records] == [
+        "/api/orders/{order_id}",
+        "/api/orders/{order_id}",
+    ]
+    assert [record.__dict__["http.response.status_code"] for record in caplog.records] == [200, 404]
