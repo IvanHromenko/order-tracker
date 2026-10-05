@@ -60,12 +60,38 @@ services:
     depends_on:
       prometheus:
         condition: service_started
+      incident-response:
+        condition: service_healthy
     restart: unless-stopped
+
+  incident-response:
+    build:
+      context: .
+      dockerfile: incident-response/Dockerfile
+    ports:
+      - "127.0.0.1:8001:8001"
+    environment:
+      INCIDENT_DB_PATH: /data/incidents.sqlite3
+      REPOSITORY_ROOT: /workspace
+      COPILOT_HOME: /data/copilot
+      ASSISTANT_COMMAND_JSON: ${ASSISTANT_COMMAND_JSON:-}
+      COPILOT_GITHUB_TOKEN: ${COPILOT_GITHUB_TOKEN:-}
+      COPILOT_ALLOW_ALL: ${COPILOT_ALLOW_ALL:-true}
+    volumes:
+      - incident-data:/data
+      - .:/workspace
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz', timeout=3)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
 volumes:
   orders:
   prometheus-data:
   grafana-data:
+  incident-data:
 
 networks:
   default:
