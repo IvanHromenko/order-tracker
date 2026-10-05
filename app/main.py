@@ -146,9 +146,21 @@ FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider)
 
 @app.middleware("http")
 async def observe_order_lookups(request, call_next):
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception:
+        route = getattr(request.scope.get("route"), "path", None)
+        is_order_lookup = request.method == "GET" and route == "/api/orders/{order_id}"
+        if is_order_lookup:
+            record_order_lookup(route, 500)
+            logger.info(
+                "Order lookup completed",
+                extra={"http.route": route, "http.response.status_code": 500},
+            )
+        raise
     route = getattr(request.scope.get("route"), "path", None)
-    if request.method == "GET" and route == "/api/orders/{order_id}":
+    is_order_lookup = request.method == "GET" and route == "/api/orders/{order_id}"
+    if is_order_lookup:
         record_order_lookup(route, response.status_code)
         logger.info(
             "Order lookup completed",

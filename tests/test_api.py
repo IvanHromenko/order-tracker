@@ -37,6 +37,28 @@ def test_missing_order(client):
     assert client.get("/api/orders/missing").status_code == 404
 
 
+def test_order_lookup_internal_error_records_500_metric(tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "DB_PATH", tmp_path / "orders.db")
+    recorded = []
+    monkeypatch.setattr(
+        main.lookup_counter,
+        "add",
+        lambda amount, attributes: recorded.append((amount, attributes)),
+    )
+    def raise_error(_row):
+        raise RuntimeError("simulated order lookup failure")
+
+    monkeypatch.setattr(main, "order_detail", raise_error)
+
+    with TestClient(main.app, raise_server_exceptions=False) as test_client:
+        response = test_client.get("/api/orders/express-1002")
+
+    assert response.status_code == 500
+    assert recorded == [
+        (1, {"http.route": "/api/orders/{order_id}", "http.response.status_code": 500})
+    ]
+
+
 def test_express_order_lookup_has_valid_estimated_delivery(client):
     response = client.get("/api/orders/express-1002")
     assert response.status_code == 200
