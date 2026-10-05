@@ -1,0 +1,40 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: order-tracker-5xx
+    folder: Order Tracker
+    interval: 1m
+    rules:
+      - uid: order-tracker-5xx
+        title: Order Tracker API 5xx responses
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'sum(increase(order_lookup_requests_total{http_route="/api/orders/{order_id}",http_response_status_code=~"5.."}[5m])) > 0'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: Order Tracker API returned a 5xx response
+          description: 'GET /api/orders/{order_id} returned a 5xx response in the last 5m. Dashboard: http://localhost:3000/d/order-tracker/order-tracker'
+          endpoint: 'GET /api/orders/{order_id}'
+          evaluation_window: 5m
+          dashboard_url: http://localhost:3000/d/order-tracker/order-tracker
+        labels:
+          service: order-tracker
+          severity: warning
+        isPaused: false

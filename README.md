@@ -12,7 +12,7 @@ You need Docker with Compose. To run the tests, you also need Python 3.11+ and `
 docker compose up --build -d --wait
 ```
 
-Open <http://127.0.0.1:8000>. The API is at `/api/orders`, and the health check is at `/healthz`. Data is stored in a Docker volume and survives container recreation.
+Open <http://127.0.0.1:8000> for the app and <http://127.0.0.1:3000> for Grafana. Grafana credentials are `admin` / `admin`. The provisioned Order Tracker dashboard and 5xx alert use Prometheus, fed by the local OpenTelemetry Collector. Data is stored in Docker volumes and survives container recreation.
 
 If port 8000 is occupied, set `ORDER_TRACKER_PORT`, for example:
 
@@ -22,12 +22,11 @@ ORDER_TRACKER_PORT=18080 docker compose up --build -d --wait
 
 The order lookup endpoint emits OpenTelemetry server spans, completion logs,
 and an `order_lookup_requests` counter labeled with `http.route` and
-`http.response.status_code`. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OTLP/HTTP
-collector endpoint to export all three signals. In Docker Compose, the endpoint
-must be reachable from inside the app container; use the collector's Compose
-service name or a host address rather than `localhost` unless the collector
-shares the app container's network namespace. Signal-specific OTLP endpoint
-variables are also supported.
+`http.response.status_code`. By default, Compose exports metrics to the local
+collector. The Grafana alert evaluates 5xx responses for
+`GET /api/orders/{order_id}` over 5 minutes, with a 1-minute pending period;
+missing 5xx data is treated as normal. To send spans or logs to another
+collector, configure the corresponding OTLP endpoint variables.
 
 Run tests with `uv run --frozen pytest -q`. Stop the app with `docker compose down`. Add `-v` only if you also want to delete the order data.
 
